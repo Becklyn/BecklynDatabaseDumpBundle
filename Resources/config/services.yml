@@ -1,0 +1,4 @@
+services:
+    becklyn_mysql_dump.configuration:
+        class: Becklyn\MysqlDumpBundle\Service\ConfigurationService
+        arguments: [null]
