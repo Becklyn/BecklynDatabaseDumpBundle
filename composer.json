@@ -1,0 +1,21 @@
+{
+  "name":         "becklyn/mysql-dump-bundle",
+  "description":  "This bundle provides the ability to backup your MySQL database using mysqldump, exposed as Symfony Command",
+  "keywords":     ["mysql", "mysqldump", "symfony"],
+  "license":      "BSD-3-Clause",
+  "type":         "symfony-bundle",
+  "homepage":     "https://github.com/Becklyn/BecklynMysqlDumpBundle",
+  "authors":      [
+    {
+      "name":     "Becklyn GmbH",
+      "homepage": "http://becklyn.com/"
+    }
+  ],
+  "require":      {
+    "php": ">=5.4.0",
+    "symfony/framework-bundle": "~2.4"
+  },
+  "autoload":     {
+    "psr-4": { "Becklyn\\MysqlDumpBundle\\": "" }
+  }
+}
