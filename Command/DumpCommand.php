@@ -2,12 +2,14 @@
 
 namespace Becklyn\MysqlDumpBundle\Command;
 
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Helper\FormatterHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Process\Process;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
  * Handles the importing of the images from the command line
@@ -21,12 +23,12 @@ class DumpCommand extends ContainerAwareCommand
     {
         $this
             ->setName('becklyn:db:dump')
-            ->setDescription('Dumps the configured or given Databases using \'mysqldump\' to .sql files.')
+            ->setDescription("Dumps the configured or given databases using 'mysqldump' to .sql files.")
             ->addOption(
-                'databases',
-                'd',
+                'connections',
+                'c',
                 InputOption::VALUE_REQUIRED,
-                'If provided it overrides the values from the <info>config.yml</info>. Multiple Database names are separated by <info>comma (,)</info>',
+                'Dumps the provided database connections. Multiple connection names are separated by <info>comma (,)</info>',
                 null
             )
             ->addOption(
@@ -37,7 +39,7 @@ class DumpCommand extends ContainerAwareCommand
                 null
             )
             ->addOption(
-                'yes',
+                'force',
                 null,
                 InputOption::VALUE_NONE,
                 'Suppresses prompt asking whether to continue.'
@@ -53,198 +55,136 @@ class DumpCommand extends ContainerAwareCommand
      */
     protected function execute (InputInterface $input, OutputInterface $output)
     {
-        $selectedDatabases = $input->getOption('databases');
-        $backupPath        = $input->getOption('path');
-        $suppressPrompt    = $input->getOption('yes');
+        $dumper       = $this->getContainer()->get('becklyn_mysql_dump.services.dump');
+        $dumperConfig = $this->getContainer()->get('becklyn_mysql_dump.services.configuration');
 
-        $databases = null;
+        $connections = $dumperConfig->getDatabases($input->getOption('connections'));
+        $backupPath  = $dumperConfig->getBackupDirectory($input->getOption('path'));
 
+        /** @var FormatterHelper $formatter */
+        $formatter = $this->getHelper('formatter');
 
-        // When the user has specified any databases (comma-separated) as parameter
-        // we use those instead of the ones that were configured in the config.yml
-        if ($selectedDatabases !== null)
-        {
-            $databases = $this->getConnectionDataByDatabaseNames(explode(',', $selectedDatabases));
-        }
-        else
-        {
-            // Use the default, configured databases from the config.yml:
-            // 1) Use 'becklyn_mysqldump:databases' when set
-            // 2) else fallback to the databases from 'doctrine:dbal:connections'
-            $databases = $this->getDatabases();
-        }
-
-        if ($backupPath === null)
-        {
-            $backupPath = $this->getBackupDirectory();
-        }
+        // Print headline
+        $headline = $formatter->formatBlock(array('', '  Becklyn MySQL Database Dumper', ''), 'comment');
+        $output->writeln($headline);
 
         // If there are no database connection information available we can't dump anything
-        if (count($databases) === 0)
+        if (empty($connections))
         {
-            $output->writeln('<error>Exiting</error>: No connection data found.');
-            return;
+            $error = $formatter->formatBlock(array('', '  No connection data found.  ', ''), 'error');
+            $output->writeln("\n{$error}\n");
+
+            return 1;
         }
 
-        $output->writeln('<info>»</info> Found connection data for the following databases:');
-        $output->writeln('Database(s): <info>' . implode(',', array_keys($databases)) . '</info>');
-        $output->writeln("Backup directory: <info>$backupPath</info>");
+        $unresolvedConnections = false;
+        $dbBackupPaths         = [];
+        $tableRows             = [];
 
-        if (!$suppressPrompt)
+        /** @var Connection $connectionData */
+        foreach ($connections as $connectionName => $connectionData)
+        {
+            // Check if the connection could not be resolved.
+            if ($connectionData === null)
+            {
+                $unresolvedConnections = true;
+
+                $tableRows[] = [
+                    '<error>- unresolved -</error>', $connectionName, '-'
+                ];
+
+                continue;
+            }
+
+            // Preserve the designated file names for the actual backup process as an actual dump
+            // may take very long the actual file names would differ from the one we printed to the user
+            $dbBackupPaths[$connectionName] = $this->getBackupFilePath($backupPath, $connectionName, $connectionData);
+
+            $tableRows[] = [
+                $connectionData->getDatabase(),
+                $connectionName,
+                $dbBackupPaths[$connectionName]
+            ];
+        }
+
+        // Print a nice table with the database name and the actual target file path
+        $this->getHelper('table')
+             ->setHeaders(array('Database', 'Connection', 'Backup file'))
+             ->setRows($tableRows)
+             ->render($output);
+
+        // Check if any connections could not be resolved and then print an error to abort.
+        if ($unresolvedConnections)
+        {
+            $error = $formatter->formatBlock(array('', 'Could not resolve one or more connections.', ''), 'error');
+            $output->writeln("\n{$error}\n");
+
+            return 1;
+        }
+
+
+        if (!$input->getOption('force'))
         {
             $output->writeln('');
+            $question = new ConfirmationQuestion('<question>Would you like to backup now? [Yn]</question>', true);
 
-            if (!$this->getHelperSet()->get('dialog')->askConfirmation($output, '<question>Would you like to backup now? [Yn]</question>'))
+            if (!$this->getHelper('question')->ask($input, $output, $question))
             {
                 $output->writeln('<info>Exiting</info>. No files were written.');
-                return;
+
+                return 0;
             }
         }
 
         $output->writeln('');
 
-        foreach ($databases as $database => $connectionData)
+        try
         {
-            $this->backupDatabase($output, $database, $connectionData['host'], $connectionData['username'], $connectionData['password'], $backupPath);
+            // Finally dump all databases
+            foreach ($connections as $connectionName => $connectionData)
+            {
+                $dumper->dump($output, $connectionName, $connectionData, $dbBackupPaths[$connectionName]);
+            }
+        }
+        catch (AccessDeniedException $e)
+        {
+            $error = $formatter->formatBlock(
+                [
+                    '',
+                    '  An error occurred during backup creation:  ',
+                    "  {$e->getMessage()} ",
+                    ''
+                ],
+                'error'
+            );
+            $output->writeln($error);
         }
 
         $output->writeln("\n<info>»» Backup completed.</info>");
+
+        return 0;
     }
 
 
     /**
-     * Performs the actual backup operation for the given database
+     * Returns the backup file path for the given connection
      *
-     * @param OutputInterface $output
-     * @param string          $database
-     * @param string          $host
-     * @param string          $username
-     * @param string          $password
-     * @param string          $backupPath
-     *
-     * @return bool
-     */
-    protected function backupDatabase (OutputInterface $output, $database, $host, $username, $password, $backupPath)
-    {
-        $fileSystem = new Filesystem();
-        if (!$fileSystem->exists($backupPath))
-        {
-            $fileSystem->mkdir($backupPath);
-        }
-
-        $backupFilePath = sprintf('%s/%s_backup_%s.sql', rtrim($backupPath, '/'), date('Y-m-d_H-i'), $database);
-        $output->write("<info>»</info> Dumping <info>$database</info> to <info>$backupFilePath</info>");
-
-        $dumpCommand = sprintf('mysqldump -u%s -p%s -h %s -x --compact %s > %s', $username, $password, $host, $database, $backupFilePath);
-
-        $process = new Process($dumpCommand);
-        $process->run();
-
-        $success = $process->isSuccessful();
-        if ($success)
-        {
-            $output->writeln(' ...<info>done</info>');
-        }
-        else
-        {
-            $fileSystem->remove($backupFilePath);
-            $output->writeln(' ...<error>failed</error>');
-        }
-
-        return $success;
-    }
-
-
-    /**
-     * Returns all databases that will be backed up by searching the configuration:
-     *  1) Searches the config.yml for the key 'becklyn_mysql_dump:databases'
-     *  2) Searches the config.yml for the connections set up under 'doctrine:dbal:connections'
-     *
-     * @return array
-     */
-    protected function getDatabases ()
-    {
-        $databases = $this->getConfiguredDatabases();
-
-        if (count($databases) === 0)
-        {
-            $databases = $this->getAppDatabases();
-        }
-
-        return $databases;
-    }
-
-
-    /**
-     * Returns a list of all databases that are configured under becklyn_mysql_dump_databases:
-     *
-     * @return array
-     */
-    protected function getConfiguredDatabases ()
-    {
-        $databases = $this->getContainer()->get('becklyn_mysql_dump.configuration')->getConfig('databases');
-
-        return $this->getConnectionDataByDatabaseNames($databases);
-    }
-
-
-    /**
-     * Returns all databases that are associated with this app.
-     * See {@link http://symfony.com/doc/current/cookbook/doctrine/multiple_entity_managers.html}
-     *
-     * @return array
-     */
-    protected function getAppDatabases ()
-    {
-        $databaseNames = [];
-        $doctrine  = $this->getContainer()->get('doctrine');
-
-        /** @var \Doctrine\DBAL\Connection $connection */
-        foreach ($doctrine->getConnections() as $connection)
-        {
-            $databaseNames[] = $connection->getDatabase();
-        }
-
-        return $this->getConnectionDataByDatabaseNames($databaseNames);
-    }
-
-
-    /**
-     * Looks up the connection data for the given database names
-     *
-     * @param array $databaseNames
-     *
-     * @return array
-     */
-    protected function getConnectionDataByDatabaseNames (array $databaseNames)
-    {
-        $connectionData = [];
-        $doctrine = $this->getContainer()->get('doctrine');
-
-        /** @var \Doctrine\DBAL\Connection $connection */
-        foreach ($doctrine->getConnections() as $connection)
-        {
-            if (in_array($connection->getDatabase(), $databaseNames))
-            {
-                $connectionData[$connection->getDatabase()] = [
-                    'host'     => $connection->getHost(),
-                    'username' => $connection->getUsername(),
-                    'password' => $connection->getPassword()
-                ];
-            }
-        }
-
-        return $connectionData;
-    }
-
-
-    /**
-     * Returns the backup directory from the config value 'becklyn_mysql_dump:directory'
+     * @param string     $backupPath
+     * @param string     $connectionName
+     * @param Connection $connection
      *
      * @return string
      */
-    protected function getBackupDirectory ()
+    protected function getBackupFilePath ($backupPath, $connectionName, Connection $connection)
     {
-        return $this->getContainer()->get('becklyn_mysql_dump.configuration')->getConfig('directory');
+        $rootDir = dirname($this->getContainer()->get('kernel')->getRootDir());
+
+        // When the backup path is inside the root dir we convert the path to a relative path to shorten the output
+        if (strpos($backupPath, $rootDir) === 0)
+        {
+            $backupPath = str_replace($rootDir, '.', $backupPath);
+        }
+
+        return sprintf('%s/%s_backup_%s__%s.sql.gz', rtrim($backupPath, '/'), date('Y-m-d_H-i'), $connectionName, $connection->getDatabase());
     }
 }
