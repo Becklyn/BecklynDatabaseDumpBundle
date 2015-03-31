@@ -4,3 +4,8 @@ services:
         arguments:
             - @doctrine
             - null
+
+    becklyn_mysql_dump.services.dump:
+        class: Becklyn\MysqlDumpBundle\Service\MysqlDumpService
+        arguments:
+            - @service_container
