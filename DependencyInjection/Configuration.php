@@ -21,7 +21,7 @@ class Configuration implements ConfigurationInterface
 
         $treeBuilder->root('becklyn_mysql_dump')
             ->children()
-                ->arrayNode('databases')
+                ->arrayNode('connections')
                     ->canBeUnset()->prototype('scalar')->end()
                 ->end()
                 ->scalarNode('directory')
