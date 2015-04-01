@@ -3,6 +3,7 @@
 namespace Becklyn\MysqlDumpBundle\Service;
 
 
+use Becklyn\MysqlDumpBundle\Entity\DatabaseConnection;
 use Doctrine\Bundle\DoctrineBundle\Registry;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\ContainerAware;
@@ -10,46 +11,35 @@ use Symfony\Component\DependencyInjection\ContainerAware;
 class DatabaseConfigurationService extends ContainerAware
 {
     /**
-     * The MysqlDumpBundle Configuration (config.yml)
-     *
-     * @var array
-     */
-    private $configuration;
-
-    /**
      * @var Registry
      */
     private $doctrine;
 
 
     /**
-     * ConfigurationService constructor.
-     *
-     * @param Registry $doctrine
-     * @param array    $configuration
+     * @var array
      */
-    public function __construct (Registry $doctrine, array $configuration)
-    {
-        $this->configuration = $configuration;
-        $this->doctrine = $doctrine;
-    }
+    private $connectionIdentifiers;
 
 
     /**
-     * Returns the configuration values for the given key
-     *
-     * @param string $key
-     *
-     * @return mixed|null
+     * @var string
      */
-    protected function getConfig ($key)
-    {
-        if (isset($this->configuration[$key]))
-        {
-            return $this->configuration[$key];
-        }
+    private $backupPath;
 
-        return null;
+
+    /**
+     * ConfigurationService constructor.
+     *
+     * @param Registry $doctrine
+     * @param array    $connectionIdentifiers
+     * @param string   $backupPath
+     */
+    public function __construct (Registry $doctrine, array $connectionIdentifiers, $backupPath)
+    {
+        $this->doctrine              = $doctrine;
+        $this->connectionIdentifiers = $connectionIdentifiers;
+        $this->backupPath            = !empty($backupPath) ? $backupPath : '';
     }
 
 
@@ -61,14 +51,14 @@ class DatabaseConfigurationService extends ContainerAware
      *
      * @param array $cliArguments
      *
-     * @return Connection[]
+     * @return array An associative array of identifier => DatabaseConnection
      */
     public function getDatabases ($cliArguments)
     {
         // If any command line arguments are passed we prefer those ...
         if (!empty($cliArguments))
         {
-            return $this->getConnectionDataByConnectionNames($cliArguments);
+            return $this->getConnectionDataByIdentifier($cliArguments);
         }
 
         // ... alternatively fall back to the previously configured databases ...
@@ -85,11 +75,11 @@ class DatabaseConfigurationService extends ContainerAware
     /**
      * Returns a list of all databases that are configured under 'becklyn_mysql_dump:databases'
      *
-     * @return array An array of connection name => connection
+     * @return array An associative array of identifier => DatabaseConnection
      */
     protected function getConfiguredDatabases ()
     {
-        return $this->getConnectionDataByConnectionNames($this->getConfig('connections'));
+        return $this->getConnectionDataByIdentifier($this->connectionIdentifiers);
     }
 
 
@@ -97,43 +87,47 @@ class DatabaseConfigurationService extends ContainerAware
      * Returns all databases that are associated with this app.
      * See {@link http://symfony.com/doc/current/cookbook/doctrine/multiple_entity_managers.html}
      *
-     * @return array An array of connection name => connection
+     * @return array An associative array of identifier => DatabaseConnection
      */
     protected function getAppDatabases ()
     {
-        return $this->getConnectionDataByConnectionNames([]);
+        return $this->getConnectionDataByIdentifier([]);
     }
 
 
     /**
-     * Looks up the connection data for the given connection names
+     * Searches for the DatabaseConnections based on the given connection identifiers
      *
-     * @param array $connectionNames Looks up the given connection names. If empty all connections will be included.
+     * @param array $identifiers A filter of connection identifier which will be returned. If empty all connections will be returned.
      *
-     * @return array An array of connection name => connection
+     * @return array An associative array of identifier => DatabaseConnection
      */
-    protected function getConnectionDataByConnectionNames (array $connectionNames)
+    protected function getConnectionDataByIdentifier (array $identifiers)
     {
-        $connectionData = [];
-        if (!empty($connectionNames))
+        $connections = [];
+
+        if (!empty($identifiers))
         {
-            // Create an associative array with connection name => null as fallback.
+            // Create an associative array with identifier => null as fallback.
             // With each connection we can resolve we replace the value with the actual connection object
-            $connectionData = array_combine($connectionNames, array_fill(0, count($connectionNames), null));
+            $connections = array_combine($identifiers, array_fill(0, count($identifiers), null));
         }
 
-        /** @var Connection $connection */
-        foreach ($this->doctrine->getConnections() as $name => $connection)
+        /**
+         * @var string     $identifier
+         * @var Connection $connection
+         */
+        foreach ($this->doctrine->getConnections() as $identifier => $connection)
         {
             // Add the current connection to the result if it either matches via name
             // or if the connectionNames array is empty, which means every connection will be included
-            if (in_array($name, $connectionNames) || empty($connectionNames))
+            if (in_array($identifier, $identifiers) || empty($identifiers))
             {
-                $connectionData[$name] = $connection;
+                $connections[$identifier] = new DatabaseConnection($identifier, $connection);
             }
         }
 
-        return $connectionData;
+        return $connections;
     }
 
 
@@ -151,6 +145,6 @@ class DatabaseConfigurationService extends ContainerAware
             return $cliArgument;
         }
 
-        return $this->getConfig('directory');
+        return $this->backupPath;
     }
 }

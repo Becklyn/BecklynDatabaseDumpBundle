@@ -26,7 +26,8 @@ class BecklynMysqlDumpExtension extends Extension
         $loader->load('services.yml');
 
         // Add the actual MySQL Dump configuration to the ConfigurationService
-        $definition = $container->getDefinition('becklyn_mysql_dump.services.configuration');
-        $definition->replaceArgument(1, $config);
+        $definition = $container->getDefinition('becklyn.mysql_dump.configuration');
+        $definition->replaceArgument(1, $config['connections']);
+        $definition->replaceArgument(2, $config['directory']);
     }
 }

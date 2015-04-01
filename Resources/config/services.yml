@@ -1,11 +1,12 @@
 services:
-    becklyn_mysql_dump.services.configuration:
+    becklyn.mysql_dump.configuration:
         class: Becklyn\MysqlDumpBundle\Service\DatabaseConfigurationService
         arguments:
             - @doctrine
             - null
+            - null
 
-    becklyn_mysql_dump.services.dump:
+    becklyn.mysql_dump.dump:
         class: Becklyn\MysqlDumpBundle\Service\MysqlDumpService
         arguments:
             - @service_container
