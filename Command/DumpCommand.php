@@ -1,10 +1,9 @@
 <?php
 
-namespace Becklyn\MysqlDumpBundle\Command;
+namespace Becklyn\DatabaseDumpBundle\Command;
 
-use Becklyn\MysqlDumpBundle\Entity\DatabaseConnection;
-use Becklyn\MysqlDumpBundle\Exception\MysqlDumpException;
-use Exception;
+use Becklyn\DatabaseDumpBundle\Entity\DatabaseConnection;
+use Becklyn\DatabaseDumpBundle\Exception\MysqlDumpException;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Helper\FormatterHelper;
 use Symfony\Component\Console\Input\InputInterface;
@@ -56,8 +55,8 @@ class DumpCommand extends ContainerAwareCommand
      */
     protected function execute (InputInterface $input, OutputInterface $output)
     {
-        $dumper       = $this->getContainer()->get('becklyn.mysql_dump.dump');
-        $dumperConfig = $this->getContainer()->get('becklyn.mysql_dump.configuration');
+        $dumper       = $this->getContainer()->get('becklyn.db_dump.dump');
+        $dumperConfig = $this->getContainer()->get('becklyn.db_dump.configuration');
 
         $connections = $dumperConfig->getDatabases($input->getOption('connections'));
         $backupPath  = $dumperConfig->getBackupDirectory($input->getOption('path'));
@@ -170,10 +169,10 @@ class DumpCommand extends ContainerAwareCommand
     /**
      * Prints an error box to the UI for the given exception
      *
-     * @param OutputInterface $output
-     * @param Exception       $e
+     * @param OutputInterface    $output
+     * @param MysqlDumpException $e
      */
-    protected function printDumpException (OutputInterface $output, Exception $e)
+    protected function printDumpException (OutputInterface $output, MysqlDumpException $e)
     {
         $error = $this->getHelper('formatter')->formatBlock(['', '  An error occurred during backup creation:  ', "  {$e->getMessage()}  ", ''], 'error');
         $output->writeln("\n$error\n");

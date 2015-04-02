@@ -1,14 +1,14 @@
 <?php
 
-namespace Becklyn\MysqlDumpBundle\Service;
+namespace Becklyn\DatabaseDumpBundle\Service;
 
 
-use Becklyn\MysqlDumpBundle\Entity\DatabaseConnection;
-use Becklyn\MysqlDumpBundle\Exception\BackupDeletionException;
-use Becklyn\MysqlDumpBundle\Exception\DirectoryCreationException;
-use Becklyn\MysqlDumpBundle\Exception\InvalidConnectionException;
-use Becklyn\MysqlDumpBundle\Exception\InvalidConnectionTypeException;
-use Becklyn\MysqlDumpBundle\Exception\NullConnectionException;
+use Becklyn\DatabaseDumpBundle\Entity\DatabaseConnection;
+use Becklyn\DatabaseDumpBundle\Exception\BackupDeletionException;
+use Becklyn\DatabaseDumpBundle\Exception\DirectoryCreationException;
+use Becklyn\DatabaseDumpBundle\Exception\InvalidConnectionException;
+use Becklyn\DatabaseDumpBundle\Exception\InvalidConnectionTypeException;
+use Becklyn\DatabaseDumpBundle\Exception\NullConnectionException;
 use mysqli;
 use mysqli_driver;
 use mysqli_sql_exception;
@@ -67,7 +67,7 @@ class MysqlDumpService
         // We need to determine ourselves whether mysqldump has raised an error
         // as its return code is unreliable due to the fact that it's always returning 0
         $errorOut = trim($process->getErrorOutput());
-        $success  = (preg_match('/Got error:.*/', $errorOut) !== 1);
+        $success  = (stripos($errorOut, "Got error:") === false);
 
         if (!$success && !$this->removeFaultyBackup($connection->getBackupPath()))
         {

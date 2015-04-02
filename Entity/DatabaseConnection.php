@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Becklyn\MysqlDumpBundle\Entity;
+namespace Becklyn\DatabaseDumpBundle\Entity;
 
 
 use Doctrine\DBAL\Connection;

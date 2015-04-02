@@ -1,6 +1,6 @@
 <?php
 
-namespace Becklyn\MysqlDumpBundle\DependencyInjection;
+namespace Becklyn\DatabaseDumpBundle\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -19,7 +19,7 @@ class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder();
 
-        $treeBuilder->root('becklyn_mysql_dump')
+        $treeBuilder->root('becklyn_database_dump')
             ->children()
                 ->arrayNode('connections')
                     ->canBeUnset()->prototype('scalar')->end()

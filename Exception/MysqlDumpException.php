@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Becklyn\MysqlDumpBundle\Exception;
+namespace Becklyn\DatabaseDumpBundle\Exception;
 
 
 class MysqlDumpException extends \Exception

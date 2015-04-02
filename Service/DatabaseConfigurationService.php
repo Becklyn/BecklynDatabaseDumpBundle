@@ -1,9 +1,9 @@
 <?php
 
-namespace Becklyn\MysqlDumpBundle\Service;
+namespace Becklyn\DatabaseDumpBundle\Service;
 
 
-use Becklyn\MysqlDumpBundle\Entity\DatabaseConnection;
+use Becklyn\DatabaseDumpBundle\Entity\DatabaseConnection;
 use Doctrine\Bundle\DoctrineBundle\Registry;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\ContainerAware;
@@ -32,7 +32,7 @@ class DatabaseConfigurationService extends ContainerAware
      * ConfigurationService constructor.
      *
      * @param Registry $doctrine
-     * @param array    $connectionIdentifiers
+     * @param string[] $connectionIdentifiers
      * @param string   $backupPath
      */
     public function __construct (Registry $doctrine, array $connectionIdentifiers, $backupPath)
@@ -46,12 +46,12 @@ class DatabaseConfigurationService extends ContainerAware
     /**
      * Returns all database connections that should be backed up by searching the configuration:
      *  1) Uses, if provided, the arguments passed via CLI
-     *  2) Searches the config.yml for the key 'becklyn_mysql_dump:databases'
-     *  3) Searches the config.yml for the connections set up under 'doctrine:dbal:connections'
+     *  2) Searches the config.yml for the key 'becklyn_mysql_dump.databases'
+     *  3) Uses all database connections as configured for doctrine.
      *
      * @param array $cliArguments
      *
-     * @return array An associative array of identifier => DatabaseConnection
+     * @return array<DatabaseConnection|null> An associative array of identifier => DatabaseConnection
      */
     public function getDatabases ($cliArguments)
     {
@@ -73,9 +73,9 @@ class DatabaseConfigurationService extends ContainerAware
 
 
     /**
-     * Returns a list of all databases that are configured under 'becklyn_mysql_dump:databases'
+     * Returns a list of all databases that are configured under 'becklyn_mysql_dump.databases'
      *
-     * @return array An associative array of identifier => DatabaseConnection
+     * @return array<DatabaseConnection|null> An associative array of identifier => DatabaseConnection
      */
     protected function getConfiguredDatabases ()
     {
@@ -87,7 +87,7 @@ class DatabaseConfigurationService extends ContainerAware
      * Returns all databases that are associated with this app.
      * See {@link http://symfony.com/doc/current/cookbook/doctrine/multiple_entity_managers.html}
      *
-     * @return array An associative array of identifier => DatabaseConnection
+     * @return array<DatabaseConnection|null> An associative array of identifier => DatabaseConnection
      */
     protected function getAppDatabases ()
     {
@@ -100,7 +100,7 @@ class DatabaseConfigurationService extends ContainerAware
      *
      * @param array $identifiers A filter of connection identifier which will be returned. If empty all connections will be returned.
      *
-     * @return array An associative array of identifier => DatabaseConnection
+     * @return array<DatabaseConnection|null> An associative array of identifier => DatabaseConnection
      */
     protected function getConnectionDataByIdentifier (array $identifiers)
     {
@@ -132,7 +132,7 @@ class DatabaseConfigurationService extends ContainerAware
 
 
     /**
-     * Returns the backup directory from the config value 'becklyn_mysql_dump:directory'
+     * Returns the backup directory from the config value 'becklyn_mysql_dump.directory'
      *
      * @param string $cliArgument
      *

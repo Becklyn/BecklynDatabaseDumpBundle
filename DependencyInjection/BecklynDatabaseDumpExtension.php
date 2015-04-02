@@ -1,6 +1,6 @@
 <?php
 
-namespace Becklyn\MysqlDumpBundle\DependencyInjection;
+namespace Becklyn\DatabaseDumpBundle\DependencyInjection;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Config\FileLocator;
@@ -10,7 +10,7 @@ use Symfony\Component\DependencyInjection\Loader;
 /**
  * @inheritdoc
  */
-class BecklynMysqlDumpExtension extends Extension
+class BecklynDatabaseDumpExtension extends Extension
 {
     /**
      * {@inheritdoc}
@@ -24,7 +24,7 @@ class BecklynMysqlDumpExtension extends Extension
         $loader->load('services.yml');
 
         // Add the actual MySQL Dump configuration to the ConfigurationService
-        $definition = $container->getDefinition('becklyn.mysql_dump.configuration');
+        $definition = $container->getDefinition('becklyn.db_dump.configuration');
         $definition->replaceArgument(1, $config['connections']);
         $definition->replaceArgument(2, $config['directory']);
     }
