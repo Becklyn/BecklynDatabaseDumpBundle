@@ -37,12 +37,6 @@ class DumpCommand extends ContainerAwareCommand
                 InputOption::VALUE_REQUIRED,
                 "The folder path where the .sql file will be saved. Defaults to '%kernel.root%/var/db_backups/'.",
                 null
-            )
-            ->addOption(
-                'force',
-                null,
-                InputOption::VALUE_NONE,
-                'Suppresses prompt asking whether to continue.'
             );
     }
 
@@ -87,7 +81,7 @@ class DumpCommand extends ContainerAwareCommand
             return 1;
         }
 
-        if (!$input->getOption('force'))
+        if (!$input->getOption('no-interaction'))
         {
             $output->writeln('');
             $question = new ConfirmationQuestion('<question>Would you like to start the backup now? [Yn]</question>', true);
