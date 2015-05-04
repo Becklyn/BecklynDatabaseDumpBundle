@@ -8,6 +8,4 @@ services:
             - null
 
     becklyn.db_dump.dump:
-        class: Becklyn\DatabaseDumpBundle\Service\MysqlDumpService
-        arguments:
-            - @service_container
+        class: Becklyn\DatabaseDumpBundle\Service\DatabaseDumpService
