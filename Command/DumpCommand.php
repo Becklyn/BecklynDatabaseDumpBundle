@@ -4,6 +4,7 @@ namespace Becklyn\DatabaseDumpBundle\Command;
 
 use Becklyn\DatabaseDumpBundle\Entity\DatabaseConnection;
 use Becklyn\DatabaseDumpBundle\Exception\MysqlDumpException;
+use Becklyn\DatabaseDumpBundle\Service\DatabaseDumpService;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Helper\FormatterHelper;
 use Symfony\Component\Console\Input\InputInterface;
@@ -76,12 +77,16 @@ class DumpCommand extends ContainerAwareCommand
             return 1;
         }
 
-        $this->printConnectionOverviewTable($output, $connections, $backupPath);
+        // Configure the DatabaseConnection's backup path
+        $this->configureBackupPaths($dumper, $connections, $backupPath);
+
+        // Print the connection overview table
+        $this->printConnectionOverviewTable($output, $connections);
 
         // Check if any connections could not be resolved and then print an error to abort.
         if (in_array(null, $connections, true))
         {
-            $error = $formatter->formatBlock(['', 'Could not resolve one or more connections.', ''], 'error');
+            $error = $formatter->formatBlock(['', '  Could not resolve one or more connections.  ', ''], 'error');
             $output->writeln("\n{$error}\n");
 
             return 1;
@@ -144,6 +149,36 @@ class DumpCommand extends ContainerAwareCommand
 
 
     /**
+     * Sets the backup path for the given DatabaseConnections
+     *
+     * @param DatabaseDumpService $dumper
+     * @param array               $connections
+     * @param string              $backupPath
+     */
+    protected function configureBackupPaths (DatabaseDumpService $dumper, array $connections, $backupPath)
+    {
+        /**
+         * @var string             $identifier
+         * @var DatabaseConnection $connection
+         */
+        foreach ($connections as $identifier => $connection)
+        {
+            // Filter out connections that could not be resolved
+            if (is_null($connection))
+            {
+                continue;
+            }
+
+            $backupFilePath = $this->buildBackupPath($backupPath, $connection->getIdentifier(), $connection->getDatabase());
+
+            // Preserve the designated file names for the actual backup process as an actual dump
+            // may take very long the actual file names would differ from the one we printed to the user
+            $dumper->configureBackupPath($connection, $backupFilePath);
+        }
+    }
+
+
+    /**
      * Returns the backup file path for the given connection
      *
      * @param string $backupPath
@@ -152,7 +187,7 @@ class DumpCommand extends ContainerAwareCommand
      *
      * @return string
      */
-    protected function getBackupFilePath ($backupPath, $identifier, $database)
+    protected function buildBackupPath ($backupPath, $identifier, $database)
     {
         $rootDir = dirname($this->getContainer()->get('kernel')->getRootDir());
 
@@ -162,7 +197,7 @@ class DumpCommand extends ContainerAwareCommand
             $backupPath = str_replace($rootDir, '.', $backupPath);
         }
 
-        return sprintf('%s/%s_backup_%s__%s.sql.gz', rtrim($backupPath, '/'), date('Y-m-d_H-i'), $identifier, $database);
+        return sprintf('%s/%s_backup_%s__%s.sql', rtrim($backupPath, '/'), date('Y-m-d_H-i'), $identifier, $database);
     }
 
 
@@ -187,9 +222,8 @@ class DumpCommand extends ContainerAwareCommand
      *
      * @param OutputInterface $output
      * @param array           $connections
-     * @param string          $backupPath
      */
-    protected function printConnectionOverviewTable (OutputInterface $output, array $connections, $backupPath)
+    protected function printConnectionOverviewTable (OutputInterface $output, array $connections)
     {
         $rows = [];
 
@@ -202,21 +236,17 @@ class DumpCommand extends ContainerAwareCommand
             // Check if the connection could not be resolved.
             if (is_null($connection))
             {
-                $rows[] = ['<error>- unresolved -</error>', $identifier, '-'];
+                $rows[] = ['<error>- unresolved -</error>', $identifier, '-', '-'];
 
                 continue;
             }
 
-            // Preserve the designated file names for the actual backup process as an actual dump
-            // may take very long the actual file names would differ from the one we printed to the user
-            $connection->setBackupPath($this->getBackupFilePath($backupPath, $connection->getIdentifier(), $connection->getDatabase()));
-
-            $rows[] = [$connection->getDatabase(), $identifier, $connection->getBackupPath()];
+            $rows[] = [$connection->getDatabase(), $identifier, $connection->getType(), $connection->getBackupPath()];
         }
 
         // Print a nice table with the database name and the actual target file path
         $this->getHelper('table')
-             ->setHeaders(['Database', 'Connection', 'Backup file'])
+             ->setHeaders(['Database', 'Connection', 'Type', 'Backup file'])
              ->setRows($rows)
              ->render($output);
     }
