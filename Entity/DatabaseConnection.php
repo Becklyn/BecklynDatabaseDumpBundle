@@ -9,9 +9,19 @@ use Doctrine\DBAL\Connection;
 class DatabaseConnection
 {
     /**
-     * @var int Type identifier for MySQL databases
+     * @var string Type identifier for MySQL databases
      */
-    const TYPE_MYSQL = 0;
+    const TYPE_MYSQL = 'mysql';
+
+    /**
+     * @var string Type identifier for PostgreSQL databases
+     */
+    const TYPE_POSTGRESQL = 'pgsql';
+
+    /**
+     * @var string Type identifier for SQLite databases
+     */
+    const TYPE_SQLITE = 'sqlite';
 
 
     /**
@@ -51,7 +61,7 @@ class DatabaseConnection
 
 
     /**
-     * @var int
+     * @var string
      */
     private $type;
 
@@ -60,7 +70,6 @@ class DatabaseConnection
      * @var string
      */
     private $backupPath;
-
 
 
     /**
@@ -72,10 +81,7 @@ class DatabaseConnection
     public function __construct ($identifier, Connection $connection = null)
     {
         $this->identifier = $identifier;
-
-        // So far we're only dealing with MySQL connections. In the future we need
-        // a proper way of detecting how to identify the connection's database type (aka the driver)
-        $this->type = self::TYPE_MYSQL;
+        $this->type       = $this->getDatabaseConnectionType($connection);
 
         if (!is_null($connection))
         {
@@ -87,6 +93,33 @@ class DatabaseConnection
         }
     }
 
+
+    /**
+     * Determines the type of the given Symfony2 Connection and maps it to DatabaseConnection types
+     *
+     * @param Connection $connection
+     *
+     * @return string|null
+     */
+    protected function getDatabaseConnectionType (Connection $connection)
+    {
+        $connectionParams = $connection->getParams();
+
+        switch ($connectionParams['driver'])
+        {
+            case 'pdo_mysql':
+                return DatabaseConnection::TYPE_MYSQL;
+
+            case 'pdo_pgsql':
+                return DatabaseConnection::TYPE_POSTGRESQL;
+
+            case 'sqlite':
+                return DatabaseConnection::TYPE_SQLITE;
+
+            default:
+                return null;
+        }
+    }
 
 
     /**
@@ -198,7 +231,7 @@ class DatabaseConnection
 
 
     /**
-     * @return int
+     * @return string
      */
     public function getType ()
     {
@@ -207,7 +240,7 @@ class DatabaseConnection
 
 
     /**
-     * @param int $type
+     * @param string $type
      */
     public function setType ($type)
     {
