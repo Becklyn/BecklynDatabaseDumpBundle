@@ -3,7 +3,7 @@
 namespace Becklyn\DatabaseDumpBundle\Command;
 
 use Becklyn\DatabaseDumpBundle\Entity\DatabaseConnection;
-use Becklyn\DatabaseDumpBundle\Exception\MysqlDumpException;
+use Becklyn\DatabaseDumpBundle\Exception\DatabaseDumpException;
 use Becklyn\DatabaseDumpBundle\Service\DatabaseDumpService;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Helper\FormatterHelper;
@@ -135,7 +135,7 @@ class DumpCommand extends ContainerAwareCommand
                     $output->writeln(preg_replace("~^(.*?)$~m", "    \\1", $dumpResult['error']));
                 }
             }
-            catch (MysqlDumpException $e)
+            catch (DatabaseDumpException $e)
             {
                 $output->writeln('<error>failed</error>');
                 $this->printDumpException($output, $e);
@@ -204,10 +204,10 @@ class DumpCommand extends ContainerAwareCommand
     /**
      * Prints an error box to the UI for the given exception
      *
-     * @param OutputInterface    $output
-     * @param MysqlDumpException $e
+     * @param OutputInterface       $output
+     * @param DatabaseDumpException $e
      */
-    protected function printDumpException (OutputInterface $output, MysqlDumpException $e)
+    protected function printDumpException (OutputInterface $output, DatabaseDumpException $e)
     {
         $error = $this->getHelper('formatter')->formatBlock(['', '  An error occurred during backup creation:  ', "  {$e->getMessage()}  ", ''], 'error');
         $output->writeln("\n$error\n");

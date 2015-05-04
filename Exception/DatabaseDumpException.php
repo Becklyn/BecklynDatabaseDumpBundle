@@ -4,6 +4,6 @@
 namespace Becklyn\DatabaseDumpBundle\Exception;
 
 
-class MysqlDumpException extends \Exception
+class DatabaseDumpException extends \Exception
 {
 }
