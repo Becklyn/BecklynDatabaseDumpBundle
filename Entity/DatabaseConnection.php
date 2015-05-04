@@ -9,6 +9,11 @@ use Doctrine\DBAL\Connection;
 class DatabaseConnection
 {
     /**
+     * @var string Used as fallback if the database type couldn't be identified
+     */
+    const TYPE_UNKNOWN = 'unknown';
+
+    /**
      * @var string Type identifier for MySQL databases
      */
     const TYPE_MYSQL = 'mysql';
@@ -103,6 +108,11 @@ class DatabaseConnection
      */
     protected function getDatabaseConnectionType (Connection $connection)
     {
+        if (is_null($connection))
+        {
+            return DatabaseConnection::TYPE_UNKNOWN;
+        }
+
         $connectionParams = $connection->getParams();
 
         switch ($connectionParams['driver'])
@@ -117,7 +127,7 @@ class DatabaseConnection
                 return DatabaseConnection::TYPE_SQLITE;
 
             default:
-                return null;
+                return DatabaseConnection::TYPE_UNKNOWN;
         }
     }
 
