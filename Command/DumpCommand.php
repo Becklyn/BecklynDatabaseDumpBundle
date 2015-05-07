@@ -35,7 +35,7 @@ class DumpCommand extends ContainerAwareCommand
                 'path',
                 'p',
                 InputOption::VALUE_REQUIRED,
-                "The folder path where the .sql file will be saved. Defaults to '%kernel.root%/var/db_backups/'.",
+                "The folder path where the .sql file will be saved. Defaults to '%kernel.root_dir%/var/db_backups/'.",
                 null
             );
     }
