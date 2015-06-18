@@ -19,6 +19,11 @@ use Symfony\Component\Process\Process;
 class MysqlDumpService extends BaseDatabaseDumpService
 {
     /**
+     * Determines whether or not usage of GZip is by default enabled when explicit Dumper configuration is missing
+     */
+    const OPTION_DEFAULT_GZIP = true;
+
+    /**
      * Returns a unique identifier for this DatabaseDumpService implementation
      * which will also be used inside the config.yml to specifically configure
      * this service
@@ -106,7 +111,7 @@ class MysqlDumpService extends BaseDatabaseDumpService
         );
 
         // If GZip is enabled we need to pipe it through gzip and change the file extension
-        if ($this->getConfigValue('gzip'))
+        if ($this->getConfigValue('gzip', self::OPTION_DEFAULT_GZIP))
         {
             $command .= sprintf(' | gzip > "%s"', $connection->getBackupPath());
         }
@@ -128,7 +133,7 @@ class MysqlDumpService extends BaseDatabaseDumpService
     public function configureBackupPath (DatabaseConnection $connection, $backupPath)
     {
         // Append the .gz file extension if GZip is enabled
-        if ($this->getConfigValue('gzip'))
+        if ($this->getConfigValue('gzip', self::OPTION_DEFAULT_GZIP))
         {
             $backupPath .= '.gz';
         }
