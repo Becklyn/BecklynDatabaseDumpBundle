@@ -77,14 +77,15 @@ abstract class BaseDatabaseDumpService
      * Retrieves the config value by key
      *
      * @param string $key
+     * @param mixed  $defaultValue
      *
      * @return mixed|null
      */
-    protected function getConfigValue ($key)
+    protected function getConfigValue ($key, $defaultValue = null)
     {
         if (!isset($this->config[$key]))
         {
-            return null;
+            return $defaultValue;
         }
 
         return $this->config[$key];
