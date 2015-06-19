@@ -5,6 +5,7 @@ namespace Becklyn\DatabaseDumpBundle\Service;
 
 
 use Becklyn\DatabaseDumpBundle\Entity\DatabaseConnection;
+use Becklyn\DatabaseDumpBundle\Exception\NoDatabaseDumpersRegisteredException;
 use Becklyn\DatabaseDumpBundle\Exception\InvalidConnectionTypeException;
 
 class DatabaseDumpService
@@ -38,9 +39,15 @@ class DatabaseDumpService
      *               that contain additional information whether the dump process succeeded
      *
      * @throws InvalidConnectionTypeException
+     * @throws NoDatabaseDumpersRegisteredException
      */
     public function dump (DatabaseConnection $databaseConnection)
     {
+        if (is_null($this->databaseDumper))
+        {
+            throw new NoDatabaseDumpersRegisteredException('Unable to execute dump() because there are no BaseDatabaseDumpServices registered.');
+        }
+
         foreach ($this->databaseDumper as $databaseDumper)
         {
             if ($databaseDumper->canHandle($databaseConnection))
@@ -58,9 +65,16 @@ class DatabaseDumpService
      *
      * @param DatabaseConnection $databaseConnection
      * @param string             $backupPath
+     *
+     * @throws NoDatabaseDumpersRegisteredException
      */
     public function configureBackupPath (DatabaseConnection $databaseConnection, $backupPath)
     {
+        if (is_null($this->databaseDumper))
+        {
+            throw new NoDatabaseDumpersRegisteredException('Unable to execute configureBackupPath() because there are no BaseDatabaseDumpServices registered.');
+        }
+
         foreach ($this->databaseDumper as $databaseDumper)
         {
             if ($databaseDumper->canHandle($databaseConnection))
