@@ -126,15 +126,16 @@ CLI Arguments
 The following optional parameters are available for the `symfony becklyn:db:dump` command:
 
 
-| Parameter       | Short | Description                                                                                             |
-|-----------------|-------|---------------------------------------------------------------------------------------------------------|
-| `--connections` | `-c`  | Dumps the provided database connections. Multiple connection identifiers are separated by comma (`,`)   |
-| `--path`        | `-p`  | The folder path where the .sql file will be saved. Defaults to `%kernel.root_dir%/var/db_backups/`      |
+| Parameter       | Short | Description                                                                                                                                                                                                                      |
+|-----------------|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--connections` | `-c`  | Dumps the provided database connections.<br>Multiple connection identifiers can be selected by specifying this parameter multiple times. An alternative syntax for this is to separate each connection identifier by comma (`,`) |
+| `--path`        | `-p`  | The folder path where the .sql file will be saved. Defaults to `%kernel.root_dir%/var/db_backups/`                                                                                                                               |
 
 
 Example usage:
 
 ```bash
+$ symfony becklyn:db:dump --connections=default --connections=customer --path=/var/backups/symfony/db/
 $ symfony becklyn:db:dump --connections=default,customer --path=/var/backups/symfony/db/
 ```
 

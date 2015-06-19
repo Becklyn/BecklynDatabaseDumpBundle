@@ -27,9 +27,9 @@ class DumpCommand extends ContainerAwareCommand
             ->addOption(
                 'connections',
                 'c',
-                InputOption::VALUE_REQUIRED,
+                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
                 'Dumps the provided database connections. Multiple connection identifiers are separated by <info>comma (,)</info>',
-                null
+                []
             )
             ->addOption(
                 'path',
@@ -52,7 +52,9 @@ class DumpCommand extends ContainerAwareCommand
         $dumper       = $this->getContainer()->get('becklyn.db_dump.dump');
         $dumperConfig = $this->getContainer()->get('becklyn.db_dump.configuration');
 
-        $connections = $dumperConfig->getDatabases($input->getOption('connections'));
+        $cliConnections = $this->flattenCommaSeparatedInput($input->getOption('connections'));
+
+        $connections = $dumperConfig->getDatabases($cliConnections);
         $backupPath  = $dumperConfig->getBackupDirectory($input->getOption('path'));
 
         /** @var FormatterHelper $formatter */
@@ -134,6 +136,52 @@ class DumpCommand extends ContainerAwareCommand
         $output->writeln("\n<info>»» Backup completed.</info>");
 
         return 0;
+    }
+
+
+    /**
+     * Takes an input of array or string and searches for comma separated values and flattens them.
+     * Optionally remove duplicate entries.
+     *
+     * @param string|array $input
+     * @param bool         $unique
+     *
+     * @return array<string>
+     */
+    private function flattenCommaSeparatedInput ($input, $unique = false)
+    {
+        // If the input is a string then separate right aray
+        if (is_string($input))
+        {
+            $values = explode(',', $input);
+            if ($unique)
+            {
+                $values = array_unique($values);
+            }
+
+            return $values;
+        }
+
+        // If the input is an array then try to flatten each element
+        if (is_array($input) && count($input) == 1)
+        {
+            $flattenArray = [];
+
+            foreach ($input as $element)
+            {
+                $flattenArray = array_merge($flattenArray, explode(',', $element));
+            }
+
+            if ($unique)
+            {
+                $flattenArray = array_unique($flattenArray);
+            }
+
+            return $flattenArray;
+        }
+
+        // Do nothing
+        return $input;
     }
 
 
