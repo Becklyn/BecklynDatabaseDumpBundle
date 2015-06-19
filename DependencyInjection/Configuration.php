@@ -27,6 +27,11 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('directory')
                     ->defaultValue('%kernel.root_dir%/var/db_backups/')
                 ->end()
+                ->arrayNode('dumper')
+                    ->prototype('array')
+                        ->prototype('scalar')->end()
+                    ->end()
+                ->end()
             ->end();
 
         return $treeBuilder;

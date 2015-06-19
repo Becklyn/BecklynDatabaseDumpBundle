@@ -27,5 +27,6 @@ class BecklynDatabaseDumpExtension extends Extension
         $definition = $container->getDefinition('becklyn.db_dump.configuration');
         $definition->replaceArgument(1, $config['connections']);
         $definition->replaceArgument(2, $config['directory']);
+        $definition->replaceArgument(3, $config['dumper']);
     }
 }

@@ -4,6 +4,6 @@
 namespace Becklyn\DatabaseDumpBundle\Exception;
 
 
-class InvalidConnectionException extends MysqlDumpException
+class InvalidConnectionException extends DatabaseDumpException
 {
 }

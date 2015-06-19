@@ -4,6 +4,6 @@
 namespace Becklyn\DatabaseDumpBundle\Exception;
 
 
-class NullConnectionException extends MysqlDumpException
+class NullConnectionException extends DatabaseDumpException
 {
 }

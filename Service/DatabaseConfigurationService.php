@@ -29,17 +29,25 @@ class DatabaseConfigurationService extends ContainerAware
 
 
     /**
+     * @var array
+     */
+    private $dumpServicesConfig;
+
+
+    /**
      * ConfigurationService constructor.
      *
      * @param Registry $doctrine
      * @param string[] $connectionIdentifiers
      * @param string   $backupPath
+     * @param array    $dumpServicesConfig
      */
-    public function __construct (Registry $doctrine, array $connectionIdentifiers, $backupPath)
+    public function __construct (Registry $doctrine, array $connectionIdentifiers, $backupPath, array $dumpServicesConfig)
     {
         $this->doctrine              = $doctrine;
         $this->connectionIdentifiers = $connectionIdentifiers;
         $this->backupPath            = !empty($backupPath) ? $backupPath : '';
+        $this->dumpServicesConfig    = $dumpServicesConfig;
     }
 
 
@@ -146,5 +154,23 @@ class DatabaseConfigurationService extends ContainerAware
         }
 
         return $this->backupPath;
+    }
+
+
+    /**
+     * Returns the configuration options for the given DatabaseDumpService identifier
+     *
+     * @param string $identifier
+     *
+     * @return array
+     */
+    public function getDumpServiceConfiguration ($identifier)
+    {
+        if (!isset($this->dumpServicesConfig[$identifier]))
+        {
+            return [];
+        }
+
+        return $this->dumpServicesConfig[$identifier];
     }
 }
