@@ -6,6 +6,7 @@ services:
             - null
             - null
             - null
+            - null
 
     becklyn.db_dump.dump:
         class: Becklyn\DatabaseDumpBundle\Service\DatabaseDumpService

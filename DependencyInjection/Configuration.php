@@ -19,13 +19,27 @@ class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder();
 
+        $directoryDefault = '%kernel.root_dir%/var/db_backups/';
+
         $treeBuilder->root('becklyn_database_dump')
             ->children()
                 ->arrayNode('connections')
-                    ->canBeUnset()->prototype('scalar')->end()
+                    ->requiresAtLeastOneElement()->canBeUnset()->prototype('scalar')->end()
                 ->end()
                 ->scalarNode('directory')
-                    ->defaultValue('%kernel.root_dir%/var/db_backups/')
+                    ->defaultValue($directoryDefault)
+                ->end()
+                ->arrayNode('profiles')
+                    ->prototype('array')
+                        ->children()
+                            ->arrayNode('connections')
+                                ->requiresAtLeastOneElement()->canBeUnset()->prototype('scalar')->end()
+                            ->end()
+                            ->scalarNode('directory')
+                                ->defaultValue($directoryDefault)
+                            ->end()
+                        ->end()
+                    ->end()
                 ->end()
                 ->arrayNode('dumper')
                     ->prototype('array')

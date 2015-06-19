@@ -17,7 +17,7 @@ class DatabaseConfigurationService extends ContainerAware
 
 
     /**
-     * @var array
+     * @var string[]
      */
     private $connectionIdentifiers;
 
@@ -35,19 +35,45 @@ class DatabaseConfigurationService extends ContainerAware
 
 
     /**
+     * @var string[]
+     */
+    private $profiles;
+
+
+    /**
      * ConfigurationService constructor.
      *
      * @param Registry $doctrine
      * @param string[] $connectionIdentifiers
      * @param string   $backupPath
      * @param array    $dumpServicesConfig
+     * @param string[] $profiles
      */
-    public function __construct (Registry $doctrine, array $connectionIdentifiers, $backupPath, array $dumpServicesConfig)
+    public function __construct (Registry $doctrine, array $connectionIdentifiers, $backupPath, array $dumpServicesConfig, array $profiles)
     {
         $this->doctrine              = $doctrine;
         $this->connectionIdentifiers = $connectionIdentifiers;
         $this->backupPath            = !empty($backupPath) ? $backupPath : '';
         $this->dumpServicesConfig    = $dumpServicesConfig;
+        $this->profiles              = $profiles;
+    }
+
+
+    /**
+     * Returns a profile configuration
+     *
+     * @param string $profile
+     *
+     * @return array|null
+     */
+    public function getProfileConfiguration ($profile)
+    {
+        if (isset($this->profiles[$profile]))
+        {
+            return $this->profiles[$profile];
+        }
+
+        return null;
     }
 
 

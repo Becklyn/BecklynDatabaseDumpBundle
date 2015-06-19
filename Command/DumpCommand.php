@@ -4,6 +4,7 @@ namespace Becklyn\DatabaseDumpBundle\Command;
 
 use Becklyn\DatabaseDumpBundle\Entity\DatabaseConnection;
 use Becklyn\DatabaseDumpBundle\Exception\DatabaseDumpException;
+use Becklyn\DatabaseDumpBundle\Exception\ProfileNameNotFoundException;
 use Becklyn\DatabaseDumpBundle\Service\DatabaseDumpService;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Helper\FormatterHelper;
@@ -38,7 +39,15 @@ class DumpCommand extends ContainerAwareCommand
                 InputOption::VALUE_REQUIRED,
                 "The folder path where the .sql file will be saved. Defaults to '%kernel.root_dir%/var/db_backups/'.",
                 null
-            );
+            )
+            ->addOption(
+                'profile',
+                'pr',
+                InputOption::VALUE_REQUIRED,
+                "Determines which pre-configured database connection profile should be used. Can be used in conjunction with the <info>--connections</info> parameter.",
+                null
+            )
+        ;
     }
 
 
@@ -50,19 +59,33 @@ class DumpCommand extends ContainerAwareCommand
      */
     protected function execute (InputInterface $input, OutputInterface $output)
     {
+        /** @var FormatterHelper $formatter */
+        $formatter    = $this->getHelper('formatter');
         $dumper       = $this->getContainer()->get('becklyn.db_dump.dump');
         $dumperConfig = $this->getContainer()->get('becklyn.db_dump.configuration');
 
-        $cliConnections = $this->flattenCommaSeparatedInput($input->getOption('connections'));
-
-        $connections = $dumperConfig->getDatabases($cliConnections);
-        $backupPath  = $dumperConfig->getBackupDirectory($input->getOption('path'));
-
-        /** @var FormatterHelper $formatter */
-        $formatter = $this->getHelper('formatter');
-
         // Print headline
         $output->writeln($formatter->formatBlock(['', '  Becklyn MySQL Database Dumper', ''], 'comment'));
+
+        try
+        {
+            // Retrieve all CLI connections
+            $cliArguments = $this->parseCliConnectionArguments($input);
+        }
+        catch (ProfileNameNotFoundException $e)
+        {
+            $error = $formatter->formatBlock(['', "  {$e->getMessage()}  ", ''], 'error');
+            $output->writeln("\n{$error}\n");
+
+            return 1;
+        }
+
+        $cliConnections = $cliArguments['connections'];
+        $cliBackupPath = $cliArguments['directory'];
+
+        // Retrieve the actual connections
+        $connections = $dumperConfig->getDatabases($cliConnections);
+        $backupPath  = $dumperConfig->getBackupDirectory($cliBackupPath);
 
         // If there are no database connection information available we can't dump anything
         if (empty($connections))
@@ -145,6 +168,54 @@ class DumpCommand extends ContainerAwareCommand
 
 
     /**
+     * Parses all CLI arguments for database connection identifiers
+     *
+     * @param InputInterface $input
+     *
+     * @return array|null
+     *
+     * @throws ProfileNameNotFoundException
+     */
+    protected function parseCliConnectionArguments (InputInterface $input)
+    {
+        $dumperConfig = $this->getContainer()->get('becklyn.db_dump.configuration');
+
+        // Gather all connections that have been provided either via --profile or --connections
+        $profileName = $input->getOption('profile');
+        $profile     = $dumperConfig->getProfileConfiguration($profileName);
+
+        // Throw an error if the user has requested to use a non-existing profile
+        if ($profileName && is_null($profile))
+        {
+            throw new ProfileNameNotFoundException("Could not resolve profile '{$profileName}'.");
+        }
+
+        $profileConnections   = isset($profile['connections']) ? $profile['connections'] : [];
+        $sanitizedConnections = $this->flattenCommaSeparatedInput($input->getOption('connections'), true);
+
+        // Combine all connection identifiers and remove possible duplicates
+        $cliConnections = array_unique(array_merge($sanitizedConnections, $profileConnections));
+
+
+        // Retrieve the profile's backup path
+        $backupPath = $profile['directory'];
+
+        // If none is set we fall back to the CLI argument,
+        // which is either the one the user has passed or the default value
+        if (is_null($backupPath))
+        {
+            $backupPath = $input->getOption('path');
+        }
+
+        return [
+            'connections' => $cliConnections,
+            'directory'   => $backupPath,
+            'profileName' => $profileName,
+        ];
+    }
+
+
+    /**
      * Takes an input of array or string and searches for comma separated values and flattens them.
      * Optionally remove duplicate entries.
      *
@@ -155,7 +226,7 @@ class DumpCommand extends ContainerAwareCommand
      */
     private function flattenCommaSeparatedInput ($input, $unique = false)
     {
-        // If the input is a string then separate right aray
+        // If the input is a string then separate right array
         if (is_string($input))
         {
             $values = explode(',', $input);
