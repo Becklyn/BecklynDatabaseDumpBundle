@@ -33,7 +33,7 @@ class Configuration implements ConfigurationInterface
                     ->prototype('array')
                         ->children()
                             ->arrayNode('connections')
-                                ->requiresAtLeastOneElement()->canBeUnset()->prototype('scalar')->end()
+                                ->canBeUnset()->prototype('scalar')->end()
                             ->end()
                             ->scalarNode('directory')
                                 ->defaultValue($directoryDefault)
