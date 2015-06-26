@@ -170,6 +170,12 @@ class MysqlDumpService extends BaseDatabaseDumpService
      */
     public function validateConnection (DatabaseConnection $connection)
     {
+        // Filter out all connections that we can't handle
+        if (!$this->canHandle($connection))
+        {
+            return false;
+        }
+
         try
         {
             $driver = new mysqli_driver();
